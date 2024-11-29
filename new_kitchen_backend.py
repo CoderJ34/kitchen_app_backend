@@ -57,7 +57,7 @@ def get_answer():
         return jsonify({"error": "Please provide a question in the query string"}), 400
 
     try:
-        response = fetch_response(user_question)
+        generated_response = fetch_response(user_question)
         return jsonify({"response": generated_response}), 200
     except Exception as e:
         print(f"Error generating content: {e}")
