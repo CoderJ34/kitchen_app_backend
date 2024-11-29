@@ -1,8 +1,9 @@
 from flask import Flask, jsonify, request
-from flask_cors import CORS  # Import CORS
+from flask_cors import CORS
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
+from functools import lru_cache
 
 # Load environment variables
 load_dotenv()
@@ -11,7 +12,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # Enable CORS for all routes
-CORS(app)  # This enables CORS for all domains by default
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Configure Google Generative AI
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -39,32 +40,29 @@ model = genai.GenerativeModel(
     safety_settings=safety_settings,
     generation_config=generation_config,
     system_instruction=(
-        "You are a non-humorous veteran to cooking. Your only purpose is to give feedback, and ways to deal with food, and improve recipes based off of set ingredients. "
-        "Anything regarding cooking is your field of work."
-        "Act professional and be very precise with your steps."
-        "Make your steps understandable but yet good"
+        "You are a non-humorous veteran to cooking. Your only purpose is to give feedback, and ways to deal with food, "
+        "and improve recipes based off of set ingredients. Act professional and be very precise with your steps."
     ),
 )
 
-# Initialize the chat session
+# Cache responses for repeated queries
+@lru_cache(maxsize=100)
+def fetch_response(user_question):
+    return model.generate_content(user_question)
 
-# Define the GET route
 @app.route('/get-answer', methods=['GET'])
 def get_answer():
-    # Get the user's question from the query string
     user_question = request.args.get('question')
-    
     if not user_question:
         return jsonify({"error": "Please provide a question in the query string"}), 400
 
-    # Generate a response using the chat session
     try:
-        response = model.generate_content(f"{user_question}")
-        generated_response = response.text  # Extract the text from the response
+        response = fetch_response(user_question)
+        generated_response = response.text[:2000]  # Trim response to 2000 characters
         return jsonify({"response": generated_response}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error generating content: {e}")
+        return jsonify({"error": "Failed to process the request"}), 500
 
-# Run the Flask app
 if __name__ == '__main__':
     app.run(debug=True)
