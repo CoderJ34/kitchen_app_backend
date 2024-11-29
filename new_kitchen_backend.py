@@ -19,10 +19,10 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Define the generation configuration
 generation_config = {
-    "temperature": 1,
+    "temperature": 0,
     "top_p": 0.95,
     "top_k": 64,
-    "max_output_tokens": 8192,
+    "max_output_tokens": 4000,
     "response_mime_type": "text/plain",
 }
 
@@ -58,7 +58,6 @@ def get_answer():
 
     try:
         response = fetch_response(user_question)
-        generated_response = response.text[:2000]  # Trim response to 2000 characters
         return jsonify({"response": generated_response}), 200
     except Exception as e:
         print(f"Error generating content: {e}")
