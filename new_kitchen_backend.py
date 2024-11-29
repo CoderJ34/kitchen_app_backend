@@ -4,6 +4,7 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 from functools import lru_cache
+import logging
 
 # Load environment variables
 load_dotenv()
@@ -11,11 +12,19 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 
-# Enable CORS for all routes
+# Enable CORS for all routes (adjust origins in production)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
 # Configure Google Generative AI
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    logging.error("GEMINI_API_KEY is not set in the environment.")
+    raise EnvironmentError("GEMINI_API_KEY is required to run the app.")
+
+genai.configure(api_key=api_key)
 
 # Define the generation configuration
 generation_config = {
@@ -48,7 +57,13 @@ model = genai.GenerativeModel(
 # Cache responses for repeated queries
 @lru_cache(maxsize=100)
 def fetch_response(user_question):
-    return model.generate_content(user_question)
+    # Fetch the response and return plain text for caching
+    try:
+        response = model.generate_content(user_question)
+        return response.text  # Cache only the text part
+    except Exception as e:
+        logging.error(f"Error generating content: {e}")
+        raise
 
 @app.route('/get-answer', methods=['GET'])
 def get_answer():
@@ -60,7 +75,7 @@ def get_answer():
         generated_response = fetch_response(user_question)
         return jsonify({"response": generated_response}), 200
     except Exception as e:
-        print(f"Error generating content: {e}")
+        logging.error(f"Error processing the request: {e}")
         return jsonify({"error": "Failed to process the request"}), 500
 
 if __name__ == '__main__':
