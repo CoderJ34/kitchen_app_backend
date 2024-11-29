@@ -19,7 +19,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Define the generation configuration
 generation_config = {
-    "temperature": 0,
+    "temperature": 0.3,
     "top_p": 0.95,
     "top_k": 64,
     "max_output_tokens": 4000,
